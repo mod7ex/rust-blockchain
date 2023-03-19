@@ -1,12 +1,11 @@
-use std::time::{SystemTime, SystemTimeError};
+use std::time::SystemTime;
 use crypto::{sha2::Sha256, digest::Digest};
 use log::info;
 
-type TResult<T> = Result<T, failure::Error>;
+use crate::error::TResult;
+use crate::constants::TARGET_HEX;
 
-static TARGET_HEX: usize = 4;
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Block {
     timestamp: u128,
     transaction: String,
@@ -14,11 +13,6 @@ pub struct Block {
     hash: String,
     height: usize,
     nonce: i32,
-}
-
-#[derive(Debug, Clone)]
-pub struct BlockChain {
-    blocks: Vec<Block>
 }
 
 impl Block {
@@ -36,35 +30,18 @@ impl Block {
             timestamp,
             transaction: data,
             prev_block_hash,
-            hash: String::new(),
+            hash: String::from("empty"),
             height,
             nonce: 0
         })
     }
 
-    fn mine(&mut self) -> TResult<()> { // proof of work
-        info!("Mining the block");
-
-        while !self.validate().unwrap() {
-            self.nonce += 1;
-        }
-
-        let data = self.prepare_hash_data().unwrap();
-        let mut hasher = Sha256::new();
-        hasher.input(&data[..]);
-        self.hash = hasher.result_str();
-        Ok(())
+    pub fn hash_str(&self) -> &String {
+        &self.hash
     }
 
-    fn validate(&self) -> TResult<bool> {
-        let data = self.prepare_hash_data().unwrap();
-        let mut hasher = Sha256::new();
-        hasher.input(&data[..]);
-
-        let mut condition = vec![];
-        condition.resize(TARGET_HEX, '0' as u8);
-        println!("{:?}", condition);
-        Ok(&hasher.result_str()[0..TARGET_HEX] == String::from_utf8(condition).unwrap().as_str())
+    pub fn prev_hash_str(&self) -> &String {
+        &self.prev_block_hash
     }
 
     fn prepare_hash_data(&self) -> TResult<Vec<u8>> {
@@ -79,7 +56,36 @@ impl Block {
         Ok(bincode::serialize(&content).unwrap())
     }
 
-    fn genesis_block() -> Self {
+    fn block_hash(&self) -> TResult<String> {
+        let mut hasher = Sha256::new();
+        hasher.input(&self.prepare_hash_data().unwrap()[..]);
+        Ok(hasher.result_str())
+    }
+
+    pub fn mine(&mut self) -> TResult<()> { // proof of work
+        while !self.validate().unwrap() {
+            self.nonce += 1;
+        }
+
+        self.hash = self.block_hash().unwrap();
+        
+        println!("-------------------------------------------------");
+        println!("[Block mined]: {:#?}", self);
+        println!("-------------------------------------------------");
+
+        Ok(())
+    }
+
+    fn validate(&self) -> TResult<bool> {
+        let mut condition = vec![];
+        condition.resize(TARGET_HEX, '0' as u8);
+
+        let hash = self.block_hash().unwrap();
+
+        Ok(&hash[0..TARGET_HEX] == String::from_utf8(condition).unwrap().as_str())
+    }
+
+    pub fn genesis_block() -> Self {
         Block::new(
             String::from("Genesis block"),
             String::new(),
@@ -88,37 +94,3 @@ impl Block {
     }
 }
 
-impl BlockChain {
-    pub fn new() -> Self {
-        BlockChain {
-            blocks: vec![Block::genesis_block()]
-        }
-    }
-
-    pub fn add_block(&mut self, data: String) -> TResult<()> {
-        let prev = self.blocks.last().unwrap();
-
-        self.blocks.push(Block::new(
-            data,
-            prev.hash.clone(),
-            TARGET_HEX
-        ).unwrap());
-
-        Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_blockchain() {
-        let mut b = BlockChain::new();
-        println!("{:#?}", b);
-        b.add_block("a".to_string()).unwrap();
-        b.add_block("b".to_string()).unwrap();
-        b.add_block("c".to_string()).unwrap();
-        println!("{:#?}", b);
-    }
-}

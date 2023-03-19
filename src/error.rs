@@ -1,0 +1,1 @@
+pub type TResult<T> = Result<T, failure::Error>;

@@ -1,0 +1,6 @@
+{
+    "scripts": {
+        "clean": "rm -rf data",
+        "test": "npm run clean && cargo test -- --nocapture"
+    }
+}
