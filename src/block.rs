@@ -56,7 +56,7 @@ impl Block {
         Ok(bincode::serialize(&content).unwrap())
     }
 
-    fn block_hash(&self) -> TResult<String> {
+    fn hash_block(&self) -> TResult<String> {
         let mut hasher = Sha256::new();
         hasher.input(&self.prepare_hash_data().unwrap()[..]);
         Ok(hasher.result_str())
@@ -67,11 +67,11 @@ impl Block {
             self.nonce += 1;
         }
 
-        self.hash = self.block_hash().unwrap();
+        self.hash = self.hash_block().unwrap();
         
-        println!("-------------------------------------------------");
-        println!("[Block mined]: {:#?}", self);
-        println!("-------------------------------------------------");
+        // println!("-------------------------------------------------");
+        // println!("[Block mined]: {:#?}", self);
+        // println!("-------------------------------------------------");
 
         Ok(())
     }
@@ -80,7 +80,7 @@ impl Block {
         let mut condition = vec![];
         condition.resize(TARGET_HEX, '0' as u8);
 
-        let hash = self.block_hash().unwrap();
+        let hash = self.hash_block().unwrap();
 
         Ok(&hash[0..TARGET_HEX] == String::from_utf8(condition).unwrap().as_str())
     }
