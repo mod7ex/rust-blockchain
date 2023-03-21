@@ -3,11 +3,12 @@ use crypto::{sha2::Sha256, digest::Digest};
 
 use crate::error::TResult;
 use crate::constants::TARGET_HEX;
+use crate::transaction::Transaction;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Block {
     timestamp: u128,
-    transaction: String,
+    transactions: Vec<Transaction>,
     prev_block_hash: String,
     hash: String,
     height: usize,
@@ -16,7 +17,7 @@ pub struct Block {
 
 impl Block {
     pub fn new(
-        data: String,
+        data: Vec<Transaction>,
         prev_block_hash: String,
         height: usize
     ) -> TResult<Self> {
@@ -27,12 +28,16 @@ impl Block {
 
         Ok(Block {
             timestamp,
-            transaction: data,
+            transactions: data,
             prev_block_hash,
             hash: String::from("empty"),
             height,
             nonce: 0
         })
+    }
+
+    pub fn transactions(&self) -> &Vec<Transaction> {
+        &self.transactions
     }
 
     pub fn hash_str(&self) -> &String {
@@ -46,7 +51,7 @@ impl Block {
     fn prepare_hash_data(&self) -> TResult<Vec<u8>> {
         let content = (
             &self.prev_block_hash,
-            &self.transaction,
+            &self.transactions,
             &self.timestamp,
             TARGET_HEX,
             &self.nonce
@@ -84,9 +89,9 @@ impl Block {
         Ok(&hash[0..TARGET_HEX] == String::from_utf8(condition).unwrap().as_str())
     }
 
-    pub fn genesis_block() -> Self {
+    pub fn genesis_block(coinbase: Transaction) -> Self {
         Block::new(
-            String::from("Genesis block"),
+            vec![coinbase],
             String::new(),
             0,
         ).unwrap()
