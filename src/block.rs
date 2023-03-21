@@ -1,6 +1,5 @@
 use std::time::SystemTime;
 use crypto::{sha2::Sha256, digest::Digest};
-use log::info;
 
 use crate::error::TResult;
 use crate::constants::TARGET_HEX;
